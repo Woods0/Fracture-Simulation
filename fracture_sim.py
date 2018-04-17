@@ -21,7 +21,7 @@ viewport = (width, height)
 simulationName = "Simulation"
 shader = None
 frames = 0
-last_fps_time = 0
+clock = None
 current_cam = None
 
 wireframe = False
@@ -250,9 +250,11 @@ def initViewer():
 def loop():
     global frames, simulationName, last_fps_time, wireframe
     
+    clock.tick(60)
     pygame.display.flip()
     pygame.event.pump() # process event queue
     events = pygame.event.get()
+    
     for event in events:
         if event.type == pygame.QUIT:
             sys.exit(0)
@@ -265,15 +267,6 @@ def loop():
                 wireframe = not wireframe
 
     gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT)
-
-    # Compute FPS
-    gl_time = glut.glutGet(glut.GLUT_ELAPSED_TIME)
-    frames += 1
-    if gl_time - last_fps_time >= 1000:
-        current_fps = frames * 1000 / (gl_time - last_fps_time)
-        pygame.display.set_caption(simulationName + " - %.0f fps" % current_fps)
-        frames = 0
-        last_fps_time = gl_time
 
     return True
     
@@ -296,13 +289,15 @@ for scene in scenes:
 curr_scene = -1
 extra_frames = 0
 
+clock = pygame.time.Clock()
+
 while loop():
+    
     curr_scene = min(curr_scene + 1, len(scenes) - 1)
     scene = scenes[curr_scene]
-    # Render each frame twice, so the animation goes a little slower
+    
     render(scene, wireframe)
-    render(scene, wireframe)
-        
+    
     if curr_scene == len(scenes) -1:
         extra_frames += 1
         
