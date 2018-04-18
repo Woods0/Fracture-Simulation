@@ -20,12 +20,11 @@ width, height= 1024, 768
 viewport = (width, height)
 simulationName = "Simulation"
 shader = None
-frames = 0
 clock = None
 current_cam = None
 
 wireframe = False
-max_extra_frames = 300
+max_extra_frames = 360
 
 def render(scene, wireframe = False, twosided = False):
     global shader
@@ -241,10 +240,6 @@ def initViewer():
 
     current_cam = defaultCamera.DefaultCamera(width,height,45.)
 
-    # for FPS computation
-    frames = 0
-    last_fps_time = glut.glutGet(glut.GLUT_ELAPSED_TIME)
-
     set_camera(current_cam)
 
 def loop():
@@ -292,7 +287,6 @@ extra_frames = 0
 clock = pygame.time.Clock()
 
 while loop():
-    
     curr_scene = min(curr_scene + 1, len(scenes) - 1)
     scene = scenes[curr_scene]
     
