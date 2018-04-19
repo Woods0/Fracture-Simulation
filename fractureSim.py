@@ -224,8 +224,9 @@ def set_camera(camera):
 
     cam = transform([0.0, 0.0, 0.0], camera.transformation)
     at = transform(camera.lookat, camera.transformation)
-    glu.gluLookAt(cam[0], cam[2], -cam[1],
-                   at[0],  at[2],  -at[1],
+    scaleVal = 3.
+    glu.gluLookAt(cam[0]*scaleVal, cam[2]*scaleVal, -cam[1]*scaleVal,
+                   at[0]*-scaleVal,  at[2]*scaleVal,  -at[1]*scaleVal,
                        0,      1,       0)
 
 def initViewer():

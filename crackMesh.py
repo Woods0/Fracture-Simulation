@@ -7,7 +7,6 @@ class CrackMesh:
         self.markers = []        
         self.numMarkers = 120
 
-        # TODO: Figure out how to determine the initial orientation of the crack
         direction = np.array([1.0, 0.0, 0.0])
         
         # Rotate the direction of the vector relative to the initial number of markers being used
@@ -24,8 +23,6 @@ class CrackMesh:
             direction = np.matmul(R, direction)
             
     def propagateCrackFront(self, mesh, lowToughnessAreas, initCrack):
-        # TODO: Consider making the number of markers increase/decrease relative to the
-        # length of the current crack front, to preserve resolution throughout the simulation
         for marker in self.markers:
             # Only propagate markers that have not intersected with the mesh
             if not marker.finished:
@@ -42,7 +39,8 @@ class CrackMesh:
     # Averages out the y-coordinates of adjacent markers, in order to mitigate the randomness and smooth the mesh
     # Finds the previous two markers and the next two markers, and averages the y-coordinates of all 5 markers
     def smoothMesh(self):
-        for i in range(10):
+        yVals = []
+        for i in range(3):
             for j in range(len(self.markers)):
                 if j == 0:
                     backIndex = self.numMarkers - 2
@@ -51,27 +49,25 @@ class CrackMesh:
                 else:
                     backIndex = j - 2
                     
-                m0 = self.markers[backIndex]
-                m1 = self.markers[(backIndex + 1) % self.numMarkers]
-                m2 = self.markers[(j + 1) % self.numMarkers]
-                m3 = self.markers[(j + 2) % self.numMarkers]
+                yVals.append(self.markers[backIndex].currLocation[1])
+                yVals.append(self.markers[(backIndex + 1) % self.numMarkers].currLocation[1])
+                yVals.append(self.markers[(j + 1) % self.numMarkers].currLocation[1])
+                yVals.append(self.markers[(j + 2) % self.numMarkers].currLocation[1])
                 
-                smoothMarker = self.markers[j]
+                markerToSmooth = self.markers[j]
+                yVals.append(markerToSmooth.currLocation[1])
+
                 
-                smoothY = m0.currLocation[1] + m1.currLocation[1] + m2.currLocation[1] + m3.currLocation[1] + smoothMarker.currLocation[1]
-                
-                smoothY /= 5.
-                
-                smoothMarker.currLocation[1] = smoothY
+                markerToSmooth.currLocation[1] = sum(yVals) / len(yVals)
                     
     def createCrackMesh(self):
         vertices = []
         faces = []
-        offset = -0.05
+        offset = 0.05
         # Use adjacent markers to create triangles
-        for i in range(self.numMarkers - 1):
+        for i in range(self.numMarkers):
             marker = self.markers[i]
-            nextMarker = self.markers[(i + 1) % (self.numMarkers - 1)]
+            nextMarker = self.markers[(i + 1) % self.numMarkers]
             
             v1 = marker.currLocation
             v2 = marker.prevLocation
@@ -79,16 +75,16 @@ class CrackMesh:
             v4 = nextMarker.prevLocation
                        
             v5 = np.copy(marker.currLocation)
-            v5[1] += offset
+            v5[1] -= offset
             
             v6 = np.copy(marker.prevLocation)
-            v6[1] += offset
+            v6[1] -= offset
             
             v7 = np.copy(nextMarker.currLocation)
-            v7[1] += offset
+            v7[1] -= offset
             
             v8 = np.copy(nextMarker.prevLocation)
-            v8[1] += offset
+            v8[1] -= offset
             
             i1 = self.findIndexOfVertex(vertices, v1)
             
@@ -138,8 +134,8 @@ class CrackMesh:
                 i8 = len(vertices)
                 vertices.append(v8)
                 
-            f1 = [i2, i4, i3]
-            f2 = [i2, i3, i1]
+            f1 = [i4, i3, i2]
+            f2 = [i3, i1, i2]
             
             f3 = [i7, i8, i6]
             f4 = [i5, i7, i6]

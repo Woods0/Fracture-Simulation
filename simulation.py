@@ -11,7 +11,7 @@ class Simulation:
         minCorner = np.array([self.min, self.min, self.min])
         maxCorner = np.array([self.max, self.max, self.max])
         
-        self.crack = cm.CrackMesh([0., -0.55, 0.])
+        self.crack = cm.CrackMesh([0., 0., 0.])
         
         self.box = pymesh.generate_box_mesh(minCorner, maxCorner, num_samples = 1, keep_symmetry=False,subdiv_order=1)
         self.outFile = 'out.obj'
@@ -19,7 +19,7 @@ class Simulation:
         
         # Setup areas where material toughness is lower so that one is very slightly closer to the crack 
         # than the other, to demonstrate that the crack will favour one over the other
-        self.lowToughnessAreas = [self.max - 3.5, self.min - 4., 0.25]
+        self.lowToughnessAreas = [self.max - 2.5, self.min - 2.]
     
     ''' 
     Runs the for loop for the simulation. Terminates once max number of steps has been reached, or all markers have
@@ -32,7 +32,8 @@ class Simulation:
     def runSim(self, numSteps = 25):
         crackMesh = None
         initCrack = True
-
+        mesh = None
+        
         for i in range(numSteps):
             if self.crack.finishedMarkers < len(self.crack.markers):
                 self.crack.propagateCrackFront(self.box, self.lowToughnessAreas, initCrack)
@@ -43,14 +44,20 @@ class Simulation:
                 if crackF:    
                     crackMesh = self.processCrackMesh(crackV, crackF, crackMesh)
                 
-#                mesh = pymesh.boolean(self.box, crackMesh, operation="difference", engine="cork")
+                mesh = pymesh.boolean(self.box, crackMesh, operation="difference", engine="cork")
 
-                self.convertPyMeshToPyAssimp(crackMesh)
+                self.convertPyMeshToPyAssimp(mesh)
                 
                 print("Step {} complete! ({:.2%})".format(i + 1, ((i + 1) / numSteps)))
             else:
                 print("Crack has finished propagating!")
                 break
+            
+        meshes = pymesh.separate_mesh(mesh)
+        
+        if len(meshes) == 2:
+            for mesh in meshes:
+                pymesh.convertPyMeshToPyAssimp(mesh)
                 
                 
     # Write the PyMesh mesh as an .obj file, then read it back in with PyAssimp and store the resulting
@@ -65,9 +72,7 @@ class Simulation:
     # Clean up the initial crack mesh by removing duplicate vertices/faces and degenerate triangles
     # Then create the corresponding PyMesh mesh and return it
     def processCrackMesh(self, crackV, crackF, crackMesh):
-        crackV, crackF, info = pymesh.remove_duplicated_vertices_raw(crackV, crackF)
-        crackV, crackF, info = pymesh.remove_duplicated_faces_raw(crackV, crackF)
-        crackV, crackF, info = pymesh.remove_degenerated_triangles_raw(crackV, crackF)
+        crackV, crackF, info = pymesh.remove_degenerated_triangles_raw(np.array(crackV), np.array(crackF))
         
         if crackMesh is None:
             crackMesh = pymesh.form_mesh(np.array(crackV), np.array(crackF))
