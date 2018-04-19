@@ -222,7 +222,7 @@ def set_camera(camera):
     gl.glMatrixMode(gl.GL_MODELVIEW)
     gl.glLoadIdentity()
 
-    cam = transform([0.0, 0.1, 0.0], camera.transformation)
+    cam = transform([0.0, 0.0, 0.0], camera.transformation)
     at = transform(camera.lookat, camera.transformation)
     glu.gluLookAt(cam[0], cam[2], -cam[1],
                    at[0],  at[2],  -at[1],

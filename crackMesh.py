@@ -5,16 +5,16 @@ import pymesh
 class CrackMesh:
     def __init__(self, startLocation):
         self.markers = []        
-        numMarkers = 60
+        self.numMarkers = 120
 
         # TODO: Figure out how to determine the initial orientation of the crack
         direction = np.array([1.0, 0.0, 0.0])
         
         # Rotate the direction of the vector relative to the initial number of markers being used
-        theta = np.radians(360. / numMarkers)
+        theta = np.radians(360. / self.numMarkers)
         self.finishedMarkers = 0
         
-        for i in range(numMarkers):
+        for i in range(self.numMarkers):
             marker = m.Marker(startLocation, direction)
             self.markers.append(marker)
             
@@ -23,40 +23,72 @@ class CrackMesh:
             
             direction = np.matmul(R, direction)
             
-    def propagateCrackFront(self, mesh):
+    def propagateCrackFront(self, mesh, lowToughnessAreas, initCrack):
         # TODO: Consider making the number of markers increase/decrease relative to the
         # length of the current crack front, to preserve resolution throughout the simulation
         for marker in self.markers:
             # Only propagate markers that have not intersected with the mesh
             if not marker.finished:
-                marker.propagate()
+                marker.propagate(lowToughnessAreas, initCrack)
                 iPoint, intersection = self.checkIntersection(marker, mesh)
                 
                 if intersection:
                     marker.finished = True
                     self.finishedMarkers += 1
+                    marker.currLocation = iPoint
+                
+        self.smoothMesh()
+                    
+    # Averages out the y-coordinates of adjacent markers, in order to mitigate the randomness and smooth the mesh
+    # Finds the previous two markers and the next two markers, and averages the y-coordinates of all 5 markers
+    def smoothMesh(self):
+        for i in range(10):
+            for j in range(len(self.markers)):
+                if j == 0:
+                    backIndex = self.numMarkers - 2
+                elif j == 1:
+                    backIndex = self.numMarkers - 1
+                else:
+                    backIndex = j - 2
+                    
+                m0 = self.markers[backIndex]
+                m1 = self.markers[(backIndex + 1) % self.numMarkers]
+                m2 = self.markers[(j + 1) % self.numMarkers]
+                m3 = self.markers[(j + 2) % self.numMarkers]
+                
+                smoothMarker = self.markers[j]
+                
+                smoothY = m0.currLocation[1] + m1.currLocation[1] + m2.currLocation[1] + m3.currLocation[1] + smoothMarker.currLocation[1]
+                
+                smoothY /= 5.
+                
+                smoothMarker.currLocation[1] = smoothY
                     
     def createCrackMesh(self):
-        #TODO: Change crack from simple 'sheet' mesh into a proper enclosed mesh by creating an identical
-        # mesh, offsetting in in the y direction, and connecting the two meshes
         vertices = []
         faces = []
-        numMarkers = len(self.markers)
+        offset = -0.05
         # Use adjacent markers to create triangles
-        for i in range(numMarkers - 1):
+        for i in range(self.numMarkers - 1):
             marker = self.markers[i]
-            nextMarker = self.markers[(i + 1) % (numMarkers - 1)]
-            prevMarker = self.markers[len(self.markers) - 1 if i == 0 else i - 1]
-            
-            # Don't create a face connecting two markers that have already finished propagating, since they'll just
-            # be duplicates of faces create in a previous iteration
-            if marker.finished and nextMarker.finished and prevMarker.finished:
-                continue
+            nextMarker = self.markers[(i + 1) % (self.numMarkers - 1)]
             
             v1 = marker.currLocation
             v2 = marker.prevLocation
             v3 = nextMarker.currLocation
             v4 = nextMarker.prevLocation
+                       
+            v5 = np.copy(marker.currLocation)
+            v5[1] += offset
+            
+            v6 = np.copy(marker.prevLocation)
+            v6[1] += offset
+            
+            v7 = np.copy(nextMarker.currLocation)
+            v7[1] += offset
+            
+            v8 = np.copy(nextMarker.prevLocation)
+            v8[1] += offset
             
             i1 = self.findIndexOfVertex(vertices, v1)
             
@@ -81,12 +113,66 @@ class CrackMesh:
             if i4 == -1:
                 i4 = len(vertices)
                 vertices.append(v4)
+                
+            i5 = self.findIndexOfVertex(vertices, v5)
             
-            f1 = [i3, i4, i2]
-            f2 = [i1, i3, i2]
+            if i5 == -1:
+                i5 = len(vertices)
+                vertices.append(v5)
+                
+            i6 = self.findIndexOfVertex(vertices, v6)
+                
+            if i6 == -1:
+                i6 = len(vertices)
+                vertices.append(v6)
+                
+            i7 = self.findIndexOfVertex(vertices, v7)
+            
+            if i7 == -1:
+                i7 = len(vertices)
+                vertices.append(v7)
+                
+            i8 = self.findIndexOfVertex(vertices, v8)
+                
+            if i8 == -1:
+                i8 = len(vertices)
+                vertices.append(v8)
+                
+            f1 = [i2, i4, i3]
+            f2 = [i2, i3, i1]
+            
+            f3 = [i7, i8, i6]
+            f4 = [i5, i7, i6]
+            
+            f5 = [i1, i5, i7]
+            f6 = [i1, i7, i3]
+            
+            f7 = [i4, i8, i6]
+            f8 = [i2, i4, i6]
+            
+            f9 = [i5, i1, i6]
+            f10 = [i2, i6, i1]
+            
+            f11 = [i3, i7, i4]
+            f12 = [i7, i8, i4]
             
             faces.append(f1)
             faces.append(f2)
+            
+            faces.append(f3)
+            faces.append(f4)
+            
+            faces.append(f5)
+            faces.append(f6)
+            
+            faces.append(f7)
+            faces.append(f8)
+            
+            faces.append(f9)
+            faces.append(f10)
+            
+            faces.append(f11)
+            faces.append(f12)
         
         return vertices, faces
     
