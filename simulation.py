@@ -32,7 +32,6 @@ class Simulation:
     def runSim(self, numSteps = 25):
         crackMesh = None
         initCrack = True
-        mesh = None
         
         for i in range(numSteps):
             if self.crack.finishedMarkers < len(self.crack.markers):
@@ -44,20 +43,14 @@ class Simulation:
                 if crackF:    
                     crackMesh = self.processCrackMesh(crackV, crackF, crackMesh)
                 
-                mesh = pymesh.boolean(self.box, crackMesh, operation="difference", engine="cork")
+#                mesh = pymesh.boolean(self.box, crackMesh, operation="difference", engine="cork")
 
-                self.convertPyMeshToPyAssimp(mesh)
+                self.convertPyMeshToPyAssimp(crackMesh)
                 
                 print("Step {} complete! ({:.2%})".format(i + 1, ((i + 1) / numSteps)))
             else:
                 print("Crack has finished propagating!")
                 break
-            
-        meshes = pymesh.separate_mesh(mesh)
-        
-        if len(meshes) == 2:
-            for mesh in meshes:
-                pymesh.convertPyMeshToPyAssimp(mesh)
                 
                 
     # Write the PyMesh mesh as an .obj file, then read it back in with PyAssimp and store the resulting
